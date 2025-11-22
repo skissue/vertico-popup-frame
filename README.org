@@ -1,0 +1,58 @@
+#+title: vertico-popup-frame
+#+author: Ad <me@skissue.xyz>
+#+date: 2025
+
+=vertico-popup-frame= is an Emacs minor mode that displays [[https://github.com/minad/vertico][Vertico]] completion candidates in a dedicated popup frame instead of within the minibuffer by hijacking =vertico-buffer-mode=.
+
+* Why?
+I use a tiling window manager, which means most windows only occupy a fraction of my screen. This gets annoying when trying to see many completions at once, especially when things like [[https://github.com/minad/marginalia][Marginalia]] are active.
+
+Solution: show Vertico in a new, floating frame that can take the full screen width!
+
+If you don't use a tiling window manager, you probably don't want this. Maybe you want [[https://github.com/tumashu/vertico-posframe/][vertico-posframe]] instead if you simply want completions to appear in the middle of your screen.
+
+* Installation
+Clone the repository and add to your =load-path=:
+#+begin_src elisp
+(add-to-list 'load-path "/path/to/vertico-popup-frame")
+(require 'vertico-popup-frame)
+#+end_src
+
+* Usage
+#+begin_src elisp
+(vertico-popup-frame-mode 1)
+#+end_src
+
+* Configuration
+** Frame Parameters
+Customize the appearance of popup frames using =vertico-popup-frame-parameters=:
+#+begin_src elisp
+(setq vertico-popup-frame-parameters
+      '((minibuffer . nil)
+        (height . 12)
+        (width . 80)
+        (left . 0.5)
+        (top . 0.5)))
+#+end_src
+
+In addition to the parameters specified here, every frame is given the title =*vertico-popup-N*= where =N= is the depth of the minibuffer frame.
+
+** Window Rules
+If you're also using this with a tiling window manager, you probably want some window rules to make it play nice.
+
+Here's an example for [[https://github.com/YaLTeR/niri/][Niri]]:
+#+begin_src kdl
+  window-rule {
+      match app-id="emacs" title=r#"^\*vertico-popup-\d+\*$"#
+
+      open-floating true
+      open-focused true
+      
+      default-column-width { proportion 0.98; }
+      default-window-height { proportion 0.32; }
+      default-floating-position x=0 y=10 relative-to="bottom"
+  }
+#+end_src
+
+* Notes
+This hijacks =vertico-buffer-mode= for a majority of the functionality. Thus, you cannot use =vertico-buffer-mode= normally and this mode at the same time (though I'm not sure why you would).
