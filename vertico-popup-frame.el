@@ -34,7 +34,9 @@
   `((minibuffer . nil)
     ;; Add one line for the prompt.
     (height . ,(1+ vertico-count)))
-  "Frame parameters used for pop-up frames."
+  "Frame parameters used for pop-up frames.
+The default value removes the minibuffer and sets the height of the
+window based on `vertico-count'."
   :group 'vertico
   :type '(repeat (cons :format "%v"
                        (symbol :tag "Parameter")
