@@ -30,6 +30,9 @@
 
 ;;; Code:
 
+(require 'cl-lib)
+(require 'vertico-buffer)
+
 (defcustom vertico-popup-frame-parameters
   `((minibuffer . nil)
     ;; Add one line for the prompt.
