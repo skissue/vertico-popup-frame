@@ -51,6 +51,19 @@ window based on `vertico-count'."
 (defvar-local vertico-popup-frame--restore nil
   "Cleanup function for this minibuffer's Vertico popup frame.")
 
+(defconst vertico-popup-frame--display-action
+  '(vertico-popup-frame--display-buffer-action)
+  "Display action used while `vertico-popup-frame-mode' is enabled.")
+
+(defvar vertico-popup-frame--saved-display-action nil
+  "Previous value of `vertico-buffer-display-action'.")
+
+(defvar vertico-popup-frame--saved-vertico-buffer-mode nil
+  "Previous value of `vertico-buffer-mode'.")
+
+(defvar vertico-popup-frame--active nil
+  "Non-nil if `vertico-popup-frame-mode' has saved global state.")
+
 (defun vertico-popup-frame--frame-name ()
   "Return the popup frame name for the current minibuffer."
   (format "*vertico-popup-%d*" (max 0 (1- (minibuffer-depth)))))
@@ -104,16 +117,28 @@ See `display-buffer' for information on BUFFER and ALIST."
 
 (defun vertico-popup-frame--enable ()
   "Enable and set up `vertico-popup-frame-mode'."
+  (unless vertico-popup-frame--active
+    (setq vertico-popup-frame--saved-display-action
+          vertico-buffer-display-action
+          vertico-popup-frame--saved-vertico-buffer-mode
+          vertico-buffer-mode
+          vertico-popup-frame--active t))
   (setq vertico-buffer-display-action
-        '(vertico-popup-frame--display-buffer-action))
+        vertico-popup-frame--display-action)
   (vertico-buffer-mode 1))
 
 (defun vertico-popup-frame--disable ()
   "Disable and clean up `vertico-popup-frame-mode'."
-  ;; Default value.
-  (setq vertico-buffer-display-action
-        '(display-buffer-use-least-recent-window))
-  (vertico-buffer-mode -1))
+  (when vertico-popup-frame--active
+    (when (equal vertico-buffer-display-action
+                 vertico-popup-frame--display-action)
+      (setq vertico-buffer-display-action
+            vertico-popup-frame--saved-display-action))
+    (unless vertico-popup-frame--saved-vertico-buffer-mode
+      (vertico-buffer-mode -1))
+    (setq vertico-popup-frame--saved-display-action nil
+          vertico-popup-frame--saved-vertico-buffer-mode nil
+          vertico-popup-frame--active nil)))
 
 ;;;###autoload
 (define-minor-mode vertico-popup-frame-mode
