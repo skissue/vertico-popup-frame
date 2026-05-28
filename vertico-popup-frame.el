@@ -45,9 +45,49 @@ window based on `vertico-count'."
                        (symbol :tag "Parameter")
                        (sexp :tag "Value"))))
 
-(defvar vertico-popup-frame--frames nil
-  "Stack of frames currently showing Vertico.
-This stack will have multiple frames for recursive minibuffers.")
+(defvar-local vertico-popup-frame--frame nil
+  "Frame currently showing Vertico for this minibuffer.")
+
+(defvar-local vertico-popup-frame--restore nil
+  "Cleanup function for this minibuffer's Vertico popup frame.")
+
+(defun vertico-popup-frame--frame-name ()
+  "Return the popup frame name for the current minibuffer."
+  (format "*vertico-popup-%d*" (max 0 (1- (minibuffer-depth)))))
+
+(defun vertico-popup-frame--restore-frame (restore)
+  "Delete popup frame for the minibuffer owned by RESTORE."
+  (when-let* ((window (active-minibuffer-window))
+              (buffer (window-buffer window)))
+    (with-current-buffer buffer
+      (when (eq vertico-popup-frame--restore restore)
+        (remove-hook 'minibuffer-exit-hook restore)
+        (fset restore nil)
+        (let ((frame vertico-popup-frame--frame))
+          (setq-local vertico-popup-frame--frame nil
+                      vertico-popup-frame--restore nil)
+          (when (and (framep frame) (frame-live-p frame))
+            (ignore-errors
+              (delete-frame frame))))))))
+
+(defun vertico-popup-frame--make-restore ()
+  "Return a cleanup function for the current minibuffer."
+  (let ((restore (make-symbol "vertico-popup-frame--restore")))
+    (fset restore (lambda ()
+                    (vertico-popup-frame--restore-frame restore)))
+    restore))
+
+(defun vertico-popup-frame--setup-minibuffer (frame)
+  "Store FRAME and cleanup state in the active minibuffer buffer."
+  (when-let* ((window (active-minibuffer-window))
+              (buffer (window-buffer window)))
+    (with-current-buffer buffer
+      (setq-local mode-line-format nil
+                  vertico-popup-frame--frame frame)
+      (unless vertico-popup-frame--restore
+        (setq-local vertico-popup-frame--restore
+                    (vertico-popup-frame--make-restore))
+        (add-hook 'minibuffer-exit-hook vertico-popup-frame--restore)))))
 
 (defun vertico-popup-frame--display-buffer-action (buffer alist)
   "Custom display buffer action for `vertico-buffer-display-action'.
@@ -55,41 +95,25 @@ See `display-buffer' for information on BUFFER and ALIST."
   (let ((window
          (display-buffer-pop-up-frame
           buffer `((pop-up-frame-parameters
-                    (name . ,(format "*vertico-popup-%d*"
-                                     (length vertico-popup-frame--frames)))
+                    (name . ,(vertico-popup-frame--frame-name))
                     ,@vertico-popup-frame-parameters)
                    ,@alist))))
-    (push (window-frame window) vertico-popup-frame--frames)
+    (when (window-live-p window)
+      (vertico-popup-frame--setup-minibuffer (window-frame window)))
     window))
-
-(defun vertico-popup-frame--delete-frame ()
-  "Delete current minibuffer frame after minibuffer exit."
-  (cl-assert vertico-popup-frame--frames)
-  (cl-assert (= (length vertico-popup-frame--frames)
-                (minibuffer-depth)))
-  (let ((frame (pop vertico-popup-frame--frames)))
-    (delete-frame frame)))
-
-(defun vertico-popup-frame--setup (&rest _)
-  "Set up the new window and frame appropriately after creation."
-  (setq-local mode-line-format nil)
-  (add-hook 'minibuffer-exit-hook #'vertico-popup-frame--delete-frame
-            nil :local))
 
 (defun vertico-popup-frame--enable ()
   "Enable and set up `vertico-popup-frame-mode'."
   (setq vertico-buffer-display-action
         '(vertico-popup-frame--display-buffer-action))
-  (vertico-buffer-mode 1)
-  (add-hook 'minibuffer-setup-hook #'vertico-popup-frame--setup))
+  (vertico-buffer-mode 1))
 
 (defun vertico-popup-frame--disable ()
   "Disable and clean up `vertico-popup-frame-mode'."
   ;; Default value.
   (setq vertico-buffer-display-action
         '(display-buffer-use-least-recent-window))
-  (vertico-buffer-mode -1)
-  (remove-hook 'minibuffer-setup-hook #'vertico-popup-frame--setup))
+  (vertico-buffer-mode -1))
 
 ;;;###autoload
 (define-minor-mode vertico-popup-frame-mode
