@@ -1,6 +1,6 @@
 #+title: vertico-popup-frame
 #+author: Ad <me@skissue.xyz>
-#+date: 2025
+#+date: 2026
 
 =vertico-popup-frame= is an Emacs minor mode that displays [[https://github.com/minad/vertico][Vertico]] completion candidates in a dedicated popup frame instead of within the minibuffer by hijacking =vertico-buffer-mode=.
 
@@ -35,7 +35,7 @@ Customize the appearance of popup frames using =vertico-popup-frame-parameters=:
         (top . 0.5)))
 #+end_src
 
-In addition to the parameters specified here, every frame is given the title =*vertico-popup-N*= where =N= is the depth of the minibuffer frame.
+In addition to the parameters specified here, every frame is given the title =*vertico-popup-N*= where =N= is the zero-based minibuffer depth.
 
 ** Window Rules
 If you're also using this with a tiling window manager, you probably want some window rules to make it play nice.
